@@ -1,234 +1,263 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
-import "tailwindcss/tailwind.css";
-import { useTranslation } from "react-i18next";
-import "../i18n/i18n";
-import Admin from "../components/admin";
-import Buzzer from "../components/buzzer";
-import Login from "../components/login";
-import cookieCutter from "cookie-cutter";
+import AnswerBoard from "../components/feud/answer-board";
 
-export default function Home() {
-  const { t } = useTranslation();
-  const [playerName, setPlayerName] = useState("");
-  const [roomCode, setRoomCode] = useState("");
+function play(src) {
+  const audio = new Audio(src);
+  audio.play().catch(() => {});
+}
+
+export default function Host() {
+  const [games, setGames] = useState([]);
+  const [filter, setFilter] = useState("");
+  const [state, setState] = useState(null);
   const [error, setError] = useState("");
-  const [registeredRoomCode, setRegisteredRoomCode] = useState(null);
-  const [host, setHost] = useState(false);
-  const [game, setGame] = useState(null);
-  const [team, setTeam] = useState(null);
-  const [playerID, setPlayerID] = useState(null);
+  const [busy, setBusy] = useState(false);
 
-  const ws = useRef(null);
-
-  /**
-   * send quit message to server
-   * server cleans up data on backend then
-   * tells client to clean up
-   */
-  function quitGame(host = false) {
-    ws.current.send(
-      JSON.stringify({
-        action: "quit",
-        host: host,
-        id: playerID,
-        room: registeredRoomCode,
-      })
-    );
-  }
-
-  /**
-   * put initalization logic inside send method
-   * this is make sure the websocket connection
-   * doesn't stay idleing while a player is sitting
-   * on the main page
-   */
-  function send(message) {
-    console.debug("send", ws);
-    if (ws.current?.readyState !== 1 || !ws.current) {
-      console.log("connecting to server... new connection");
-      fetch("/api/ws").then(() => {
-        ws.current = new WebSocket(`wss://${window.location.host}/api/ws`);
-        ws.current.onopen = function() {
-          console.debug("game connected to server", ws.current);
-
-          ws.current.onmessage = function(evt) {
-            var received_msg = evt.data;
-            let json = JSON.parse(received_msg);
-            if (json.action === "host_room") {
-              console.debug("registering room with host", json.room);
-              setPlayerID(json.id);
-              setHost(true);
-              setRegisteredRoomCode(json.room);
-              setGame(json.game);
-              cookieCutter.set("session", `${json.room}:${json.id}`);
-            } else if (json.action === "join_room") {
-              console.debug("Joining room : ", json);
-              setPlayerID(json.id);
-              setRegisteredRoomCode(json.room);
-              setGame(json.game);
-              if (json.team != null) {
-                setTeam(json.team);
-              }
-            } else if (json.action === "quit") {
-              console.debug("player quit");
-              setPlayerID(null);
-              setRegisteredRoomCode(null);
-              cookieCutter.set("session", "");
-              setGame({});
-              setHost(false);
-            } else if (json.action === "get_back_in") {
-              console.debug("Getting back into room", json);
-              if (json.player === "host") {
-                setHost(true);
-              }
-              if (Number.isInteger(json.team)) {
-                setTeam(json.team);
-              }
-              setPlayerID(json.id);
-              setRegisteredRoomCode(json.room);
-              setGame(json.game);
-            } else if (json.action === "error") {
-              console.error(json.message);
-              setError(json.message);
-            } else {
-              console.debug("did not expect in index.js: ", json);
-            }
-          };
-
-          ws.current.onerror = function(e) {
-            console.error(e);
-          };
-
-          ws.current.send(message);
-        };
-      });
-    } else {
-      console.debug("send", message);
-      ws.current.send(message);
-    }
-  }
-
-  /**
-   * on page refresh check for existing session
-   * if it exists then tell the server to send back
-   * the game object
-   */
   useEffect(() => {
-    let session = cookieCutter.get("session");
-    console.debug("user session", session);
-    if (session != "" && session != null) {
-      send(JSON.stringify({ action: "get_back_in", session: session }));
-    }
+    let stop = false;
+    fetch("/api/games")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!stop) setGames(data.games || []);
+      })
+      .catch(() => {
+        if (!stop) setError("Could not list games");
+      });
+    fetch("/api/board?view=host")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!stop) setState(data);
+      })
+      .catch(() => {
+        if (!stop) setError("Could not reach the game");
+      });
+    return () => {
+      stop = true;
+    };
   }, []);
 
-  function hostRoom() {
-    send(
-      JSON.stringify({
-        action: "host_room",
-      })
-    );
-  }
+  const filtered = useMemo(() => {
+    const query = filter.trim().toLowerCase();
+    if (!query) return games;
+    return games.filter((file) => file.toLowerCase().includes(query));
+  }, [games, filter]);
 
-  /**
-   * tell server to join a game
-   * do some validation on inputs
-   */
-  function joinRoom() {
-    console.log(`ws.current `, ws);
+  async function act(payload) {
+    setBusy(true);
     setError("");
-    let roomcode = document.getElementById("roomcode").value;
-    if (roomcode.length === 4) {
-      let playername = document.getElementById("playername").value;
-      if (playername.length > 0) {
-        console.debug(`roomcode: ${roomcode}, playername ${playername}`);
-        send(
-          JSON.stringify({
-            action: "join_room",
-            room: roomcode,
-            name: playername,
-          })
-        );
-      } else {
-        setError(t("input your name"));
+    try {
+      const res = await fetch("/api/board", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "That action failed");
+        return;
       }
-    } else {
-      setError(t("room code is not correct length, should be 4 characters"));
+      setState(data);
+    } catch (err) {
+      setError("Lost the connection to the game");
+    } finally {
+      setBusy(false);
     }
   }
 
-  console.debug(`game: ${game}`);
-
-  // control what to render based on if the player is hosting
-  function getPage() {
-    if (registeredRoomCode !== null && host && game != null) {
-      return (
-        <div class="lg:flex lg:flex-row lg:justify-center w-full">
-          <div class="lg:w-1/2 sm:w-full md:w-full">
-            <Admin
-              ws={ws}
-              game={game}
-              id={playerID}
-              setGame={setGame}
-              room={registeredRoomCode}
-              quitGame={quitGame}
-            />
-          </div>
-        </div>
-      );
-    } else if (registeredRoomCode !== null && !host && game != null) {
-      return (
-        <div class="flex w-full justify-center">
-          <div class="lg:w-1/2 sm:w-10/12 md:w-3/4 w-11/12 flex flex-col space-y-3 pt-5">
-            <Buzzer
-              ws={ws}
-              game={game}
-              id={playerID}
-              setGame={setGame}
-              room={registeredRoomCode}
-              quitGame={quitGame}
-              setTeam={setTeam}
-              team={team}
-            />
-          </div>
-        </div>
-      );
-    } else {
-      return (
-        <div class="flex w-full justify-center">
-          <div class="lg:w-1/2 sm:w-10/12 sm:px-8 md:w-3/4 w-10/12 flex flex-col space-y-6 pt-5">
-            <Login
-              setRoomCode={setRoomCode}
-              roomCode={roomCode}
-              setPlayerName={setPlayerName}
-              playerName={playerName}
-              joinRoom={joinRoom}
-              hostRoom={hostRoom}
-              error={error}
-            />
-          </div>
-        </div>
-      );
-    }
+  function onUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const game = JSON.parse(String(reader.result));
+        act({ action: "load", game, name: file.name.replace(/\.json$/i, "") });
+      } catch (err) {
+        setError("That file is not valid JSON");
+      }
+    };
+    reader.readAsText(file);
   }
+
+  const round =
+    state && state.loaded ? state.rounds[state.round] : null;
+  const revealed =
+    state && state.loaded ? state.revealed[state.round] : [];
+  const strikes = state && state.loaded ? state.strikes[state.round] : 0;
+  const previewAnswers = round
+    ? round.answers.map((answer, index) => ({
+        revealed: revealed[index],
+        text: revealed[index] ? answer.text : "",
+        points: revealed[index] ? answer.points : null,
+      }))
+    : [];
+
   return (
     <>
       <Head>
-        <title>{t("Family Feud")}</title>
-        <link rel="icon" href="x.png"></link>
-        <meta name="author" content="Joshua Cold" />
-        <meta
-          name="description"
-          content="Free to play open source family feud game. Host your own custom created family feud games with built in online buzzers, timers and admin controls. Visit https://github.com/joshzcold/Cold-Family-Feud to check out the source code and contribute."
-        />
-        <link
-          rel="preload"
-          href="/fonts/Roboto/Roboto-Regular.ttf"
-          as="font"
-          crossOrigin=""
-        />
+        <title>Family Feud host</title>
       </Head>
-      <main>{getPage()}</main>
+      <main className="min-h-screen text-white">
+        <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <section>
+            <p className="uppercase tracking-widest text-blue-100 text-sm mb-3">
+              Game window
+            </p>
+            {round ? (
+              <AnswerBoard
+                question={round.question}
+                answers={previewAnswers}
+                strikes={strikes}
+                round={state.round}
+                roundCount={state.rounds.length}
+                buzz={state.buzz}
+              />
+            ) : (
+              <div
+                className="rounded-3xl border-4 border-dashed border-blue-200 flex items-center justify-center p-10 text-center text-xl"
+                style={{ minHeight: "16rem" }}
+              >
+                Load a game to put a question on the board.
+              </div>
+            )}
+          </section>
+
+          <section className="bg-blue-900 bg-opacity-40 rounded-3xl p-5 border border-blue-300 border-opacity-40">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-3xl font-bold">Host controller</h2>
+                <p className="text-blue-100 mt-1">
+                  {state && state.loaded
+                    ? state.name
+                    : "Pick a game or upload a JSON file"}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="flex-shrink-0 rounded-xl bg-white text-blue-900 font-bold px-4 py-3"
+                onClick={() => window.open("/game", "feud-board")}
+              >
+                Open game window
+              </button>
+            </div>
+
+            <label className="block text-sm uppercase tracking-wide text-blue-100 mb-1">
+              Find a game
+            </label>
+            <input
+              className="w-full rounded-xl px-3 py-2 text-black mb-2"
+              placeholder="Search game files"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+            />
+            <div className="flex flex-col sm:flex-row gap-2 mb-5">
+              <select
+                className="flex-1 rounded-xl px-3 py-2 text-black"
+                defaultValue=""
+                onChange={(event) => {
+                  if (event.target.value) {
+                    act({ action: "load-file", file: event.target.value });
+                  }
+                }}
+                disabled={busy}
+              >
+                <option value="">Load a saved game</option>
+                {filtered.map((file) => (
+                  <option key={file} value={file}>
+                    {file.replace(/\.json$/i, "").replace(/_/g, " ")}
+                  </option>
+                ))}
+              </select>
+              <label className="rounded-xl bg-white text-blue-900 font-bold px-4 py-2 text-center cursor-pointer">
+                Upload JSON
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={onUpload}
+                />
+              </label>
+            </div>
+
+            <div className="flex gap-2 mb-5">
+              <button
+                type="button"
+                className="flex-1 rounded-xl bg-blue-700 font-bold py-3 disabled:opacity-40"
+                disabled={!round || state.round === 0 || busy}
+                onClick={() => act({ action: "prev" })}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                className="flex-1 rounded-xl bg-white text-blue-900 font-bold py-3 disabled:opacity-40"
+                disabled={!round || state.round >= state.rounds.length - 1 || busy}
+                onClick={() => act({ action: "next" })}
+              >
+                Next question
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2 mb-5 max-h-80 overflow-auto pr-1">
+              {round
+                ? round.answers.map((answer, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 rounded-xl px-3 py-2"
+                      style={{ backgroundColor: "rgba(6, 32, 84, 0.45)" }}
+                    >
+                      <span className="w-8 text-xl font-black">{index + 1}</span>
+                      <span className="flex-1 font-semibold uppercase">
+                        {answer.text}
+                      </span>
+                      <span className="w-12 text-right text-2xl font-black">
+                        {answer.points}
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded-lg px-3 py-2 font-bold bg-yellow-400 text-black disabled:opacity-40"
+                        disabled={busy}
+                        onClick={() => {
+                          if (!revealed[index]) play("/good-answer.mp3");
+                          act({
+                            action: revealed[index] ? "hide" : "reveal",
+                            index,
+                          });
+                        }}
+                      >
+                        {revealed[index] ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                  ))
+                : null}
+            </div>
+
+            <button
+              type="button"
+              className="w-full rounded-2xl bg-red-600 text-white text-3xl font-black py-5 tracking-wide disabled:opacity-40"
+              disabled={!round || busy}
+              onClick={() => {
+                play("/wrong.mp3");
+                act({ action: "wrong" });
+              }}
+            >
+              Wrong answer
+            </button>
+            <button
+              type="button"
+              className="w-full mt-2 text-blue-100 underline disabled:opacity-40"
+              disabled={!round || strikes === 0 || busy}
+              onClick={() => act({ action: "clear-strikes" })}
+            >
+              Clear Xs
+            </button>
+
+            {error ? <p className="mt-4 text-red-200 text-lg">{error}</p> : null}
+          </section>
+        </div>
+      </main>
     </>
   );
 }
