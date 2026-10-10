@@ -7,6 +7,7 @@ export default function GameWindow() {
   const [state, setState] = useState(null);
   const lastBuzz = useRef(null);
   const lastReveal = useRef(null);
+  const [flashStrike, setFlashStrike] = useState(false);
 
   useEffect(() => {
     if (!ready) return undefined;
@@ -26,6 +27,8 @@ export default function GameWindow() {
         if (lastBuzz.current != null && data.buzz > lastBuzz.current) {
           wrong.currentTime = 0;
           wrong.play().catch(() => {});
+          setFlashStrike(true);
+          window.setTimeout(() => setFlashStrike(false), 900);
         }
         if (
           lastReveal.current != null &&
@@ -76,12 +79,15 @@ export default function GameWindow() {
               round={state.round}
               roundCount={state.roundCount}
               buzz={state.buzz}
+              teams={state.teams}
+              flashStrike={flashStrike}
             />
           </div>
         ) : (
-          <p className="text-white text-3xl text-center">
+          <div className="text-white text-3xl text-center">
+            <img src="/comicon-vizag-logo.svg" alt="Comic Con Vizag" className="waiting-logo" />
             Waiting for the host to load a game.
-          </p>
+          </div>
         )}
       </main>
     </>

@@ -5,9 +5,22 @@ export default function AnswerBoard({
   round,
   roundCount,
   buzz,
+  teams = [],
+  flashStrike = false,
 }) {
   return (
-    <div className="w-full">
+    <div className="w-full relative">
+      {flashStrike ? <div className="strike-flash" aria-label="Wrong answer"><span>✕</span></div> : null}
+      {teams.length ? (
+        <div className="grid grid-cols-2 gap-3 mb-5 text-center">
+          {teams.map((team, index) => (
+            <div key={index} className="rounded-2xl border-2 border-yellow-300 bg-blue-950 px-3 py-2 text-white shadow-lg">
+              <p className="uppercase text-xs md:text-sm tracking-wider text-blue-100 truncate">{team.name}</p>
+              <p className="text-3xl md:text-5xl font-black leading-none">{team.score}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="text-center text-white mb-5">
         <p className="uppercase tracking-widest text-sm text-blue-100">
           {roundCount > 0 ? `Question ${round + 1} of ${roundCount}` : "Family Feud"}

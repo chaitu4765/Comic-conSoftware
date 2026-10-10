@@ -33,6 +33,14 @@ export default function handler(req, res) {
       board.wrong();
     } else if (body.action === "clear-strikes") {
       board.clearStrikes();
+    } else if (body.action === "set-team-name") {
+      board.setTeamName(body.team, body.name);
+    } else if (body.action === "award-round") {
+      board.awardRound(body.team);
+    } else if (body.action === "add-shown-points") {
+      board.addShownPoints(body.team);
+    } else if (body.action === "set-team-score") {
+      board.setTeamScore(body.team, body.score);
     } else {
       res.status(400).json({ error: "Unknown action" });
       return;

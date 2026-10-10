@@ -93,6 +93,14 @@ export default function Host() {
         points: revealed[index] ? answer.points : null,
       }))
     : [];
+  const availablePoints = previewAnswers.reduce(
+    (total, answer, index) => total + (
+      answer.revealed && (!state.answerAwards || !state.answerAwards[state.round] || state.answerAwards[state.round][index] === null)
+        ? Number(answer.points || 0)
+        : 0
+    ),
+    0
+  );
 
   return (
     <>
@@ -113,6 +121,7 @@ export default function Host() {
                 round={state.round}
                 roundCount={state.rounds.length}
                 buzz={state.buzz}
+                teams={state.teams}
               />
             ) : (
               <div
@@ -245,6 +254,18 @@ export default function Host() {
             >
               Wrong answer
             </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+              {(state && state.teams ? state.teams : []).map((team, index) => (
+                <div key={index} className="rounded-xl bg-blue-950 p-3 border border-blue-300">
+                  <label className="block text-xs uppercase tracking-wider text-blue-100 mb-1">Team {index + 1}</label>
+                  <input className="w-full rounded-lg px-2 py-1 text-black font-bold" value={team.name} onChange={(event) => act({ action: "set-team-name", team: index, name: event.target.value })} disabled={busy} />
+                  <input type="number" min="0" className="w-full rounded-lg px-2 py-1 text-black text-center text-3xl font-black my-2" value={team.score} onChange={(event) => act({ action: "set-team-score", team: index, score: event.target.value })} disabled={busy} aria-label={`${team.name} score`} />
+                  <button type="button" className="w-full rounded-lg bg-yellow-400 text-black font-black py-2 disabled:opacity-40" disabled={!round || availablePoints === 0 || busy} onClick={() => act({ action: "add-shown-points", team: index })}>
+                    {availablePoints === 0 ? "Points awarded" : `Add ${availablePoints} new points`}
+                  </button>
+                </div>
+              ))}
+            </div>
             <button
               type="button"
               className="w-full mt-2 text-blue-100 underline disabled:opacity-40"

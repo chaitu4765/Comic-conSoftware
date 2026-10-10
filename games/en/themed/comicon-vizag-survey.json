@@ -1,0 +1,26 @@
+{
+  "rounds": [
+    { "question": "Which Spider-Man is most famous?", "answers": [
+      { "ans": "Tobey Maguire Spider-Man", "pnt": 23 }, { "ans": "Tom Holland Spider-Man", "pnt": 22 },
+      { "ans": "Amazing Spider-Man", "pnt": 9 }, { "ans": "Miles Morales Spider-Man", "pnt": 6 },
+      { "ans": "Ultimate Spider-Man", "pnt": 3 }, { "ans": "Spider-Man Noir", "pnt": 1 },
+      { "ans": "Spider-Man 2099", "pnt": 1 }, { "ans": "Spider-Man (1977)", "pnt": 1 }
+    ] },
+    { "question": "Which Robin is the most emotionally damaged?", "answers": [
+      { "ans": "Jason Todd", "pnt": 30 }, { "ans": "Dick Grayson", "pnt": 10 }, { "ans": "Damian Wayne", "pnt": 4 },
+      { "ans": "Carrie Kelly", "pnt": 3 }, { "ans": "Tim Drake", "pnt": 1 }, { "ans": "Helena Wayne", "pnt": 1 }, { "ans": "Stephanie Brown", "pnt": 1 }
+    ] },
+    { "question": "What is the most controversial anime hot take?", "answers": [
+      { "ans": "One Piece is too long", "pnt": 20 }, { "ans": "Demon Slayer is mid", "pnt": 14 }, { "ans": "Sub vs Dub", "pnt": 8 },
+      { "ans": "Goku is a bad father", "pnt": 7 }, { "ans": "Fullmetal Alchemist", "pnt": 6 }, { "ans": "Attack on Titan", "pnt": 5 }, { "ans": "Naruto/Sasuke", "pnt": 1 }
+    ] },
+    { "question": "Apart from Marvel and DC, name another comic studio.", "answers": [
+      { "ans": "Dark Horse Comics", "pnt": 24 }, { "ans": "Image Comics", "pnt": 18 }, { "ans": "Dynamite Entertainment", "pnt": 9 },
+      { "ans": "IDW Publishing", "pnt": 5 }, { "ans": "Boom! Studios", "pnt": 4 }
+    ] },
+    { "question": "Most Iconic Dialogue of Batman Villains.", "answers": [
+      { "ans": "You either die a hero, or you live long enough to become the villain.", "pnt": 20 },
+      { "ans": "why so serious?", "pnt": 21 }, { "ans": "if you devote yourself to an ideal,and if you cant be stopped, then you become something else entirely.., Mr Wayne", "pnt": 2 }, { "ans": "All it takes is one bad day to reduce the sanest man alive to lunacy", "pnt": 8 }, { "ans": "Am the shadow that breaks the bat", "pnt": 6 }, { "ans": "What is fear? Fear is the base of everything , fear is survaival", "pnt": 10 }
+    ] }
+  ]
+}

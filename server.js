@@ -1,7 +1,15 @@
 const { parse } = require("url");
+const path = require("path");
 const next = require("next");
 const dev = process.env.NODE_ENV !== "production";
-const app = next({ dev });
+const projectRoot = __dirname;
+// Keep live-development chunks separate from production builds. Otherwise a
+// build can overwrite the dev manifest while the host screen is still open.
+const app = next({
+  dev,
+  dir: projectRoot,
+  conf: { distDir: dev ? ".next-dev" : ".next" },
+});
 const fs = require("fs");
 const handle = app.getRequestHandler();
 
@@ -10,8 +18,8 @@ var { createServer } = require("http");
 if (dev) {
   var { createServer } = require("http");
   httpsOptions = {
-    key: fs.readFileSync("./dev/cert/localhost.key"),
-    cert: fs.readFileSync("./dev/cert/localhost.crt"),
+    key: fs.readFileSync(path.join(projectRoot, "dev/cert/localhost.key")),
+    cert: fs.readFileSync(path.join(projectRoot, "dev/cert/localhost.crt")),
   };
 }
 

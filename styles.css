@@ -33,6 +33,11 @@ body {
   animation: strike-pop 0.28s ease-out;
 }
 
+.waiting-logo { display: block; width: min(340px, 72vw); max-height: 220px; margin: 0 auto 2rem; object-fit: contain; }
+.strike-flash { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; pointer-events: none; background: rgba(0,0,0,.2); animation: strike-overlay .9s ease-out forwards; }
+.strike-flash span { color: #f21313; font-family: Arial, sans-serif; font-size: min(80vw, 78vh); font-weight: 900; line-height: .7; text-shadow: 0 8px 0 #fff, 0 14px 18px rgba(0,0,0,.75); }
+@keyframes strike-overlay { 0%,55% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.08); } }
+
 @keyframes strike-pop {
   0% {
     transform: scale(1.45);
